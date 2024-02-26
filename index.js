@@ -33,18 +33,33 @@ app.get('/api/hello', function(req, res) {
 app.post('/api/shorturl', async function(req, res) {
 	const longUrl = req.body.url;
 	const shortUrl = shortid.generate();
-	try {
+	const isValidUrl = urlString=> {
+			var urlPattern = new RegExp('^(https?:\\/\\/)?'+ // validate protocol
+			'((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // validate domain name
+			'((\\d{1,3}\\.){3}\\d{1,3}))'+ // validate OR ip (v4) address
+			'(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // validate port and path
+			'(\\?[;&a-z\\d%_.~+=-]*)?'+ // validate query string
+			'(\\#[-a-z\\d_]*)?$','i'); // validate fragment locator
+		return !!urlPattern.test(urlString);
+	}
+	console.log(isValidUrl(longUrl))
+	if(isValidUrl(longUrl)){
+		try {
 			await Url.create({ long: longUrl, short: shortUrl });
 			res.json({ original_url: longUrl, short_url: shortUrl })
 	} catch (err) {
 			console.error(err);
 			res.status(500).json({ error: 'Internal Server Error' });
 	}
+	}else{
+		res.json({ error: 'invalid url' })
+	}
+
   
 });
 
 // Route to redirect to original URL
-app.get('/:shortUrl', async (req, res) => {
+app.get('/api/shorturl/:shortUrl', async (req, res) => {
 	const shortUrl = req.params.shortUrl;
 
 	try {
@@ -52,7 +67,7 @@ app.get('/:shortUrl', async (req, res) => {
 			if (urlMapping) {
 					res.redirect(urlMapping.long);
 			} else {
-					res.status(404).json({ error: 'URL not found' });
+					res.json({ error: 'invalid url' })
 			}
 	} catch (err) {
 			console.error(err);
